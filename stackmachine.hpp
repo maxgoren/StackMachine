@@ -1,29 +1,3 @@
-/*
-
-MIT License
-
-Copyright (c) 2023 Max Goren
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
-
 #ifndef STACKMACHINE_HPP
 #define STACKMACHINE_HPP 
 #include <iostream>
@@ -34,6 +8,7 @@ typedef int OPSTAT;
 const OPSTAT OP_SUCCESS = 1;
 const OPSTAT OP_ERROR = -1;
 const OPSTAT OP_BRANCH = 2;
+const OPSTAT OP_HALT = 3;
 
 class StackMachine {
     private:
@@ -48,7 +23,7 @@ class StackMachine {
         int rets[255]; //return stack
         OPSTAT pushr();
         OPSTAT popr();
-        //alu
+        //arithmetic logic unit.
         OPSTAT ALU(string op, string arg);
         int tosr; //top of stack register
         OPSTAT cmpl();
@@ -71,13 +46,18 @@ class StackMachine {
         OPSTAT jmpz(int addr);  //jump to addr if top of stack IS zero
         OPSTAT call(); //call to
         OPSTAT retf(); //return from
-        void halt(); //end program.
+        OPSTAT halt(); //end program.
+        OPSTAT nop(); //no operation (you'd be surprised)
         vector<string> smtokenizer(string expr, char DELIM);
         int programCounter;
         int memoryAddrReg;
         int randomAccessMemory[255];
+        bool debugMode;
+        bool stepping;
     public:
-        StackMachine() {
+        StackMachine(bool dbmode = false, bool smode = false) {
+            debugMode = dbmode;
+            stepping = smode;
             top = 0;
             tosr = 0;
             rtop = 0;
@@ -88,15 +68,21 @@ class StackMachine {
 };
 
 OPSTAT StackMachine::cmpl() {
-    return push(data[top-2] < data[top - 1]);
+    if (data[top-1] < data[top - 2])
+        return push(1);
+    return push(0);
 }
 
 OPSTAT StackMachine::cmpg() {
-    return push(data[top-2] > data[top - 1]);
+    if (data[top-1] > data[top - 2])
+        return push(1);
+    return push(0);
 }
 
 OPSTAT StackMachine::cmpeq() {
-    return push(data[top-2] == data[top - 1]);
+    if (data[top-2] == data[top - 1])
+        return push(1);
+    return push(0);
 }
 
 /// @brief bitwise AND top two items on data stack
@@ -173,7 +159,7 @@ OPSTAT StackMachine::store() {
 /// @return 
 OPSTAT StackMachine::jmpnz(int addr) {
     if (data[top-1] != 0) {
-        push(programCounter);   //put current address on data stack
+        push(programCounter+1);   //put address of next instruction (ret addr) on data stack
         pushr();               //move address from data stack to return stack
         programCounter = addr; //set  to jump point
         return OP_BRANCH;      //signal next instruction is result of branching.
@@ -185,12 +171,11 @@ OPSTAT StackMachine::jmpnz(int addr) {
 /// Opposite behavior to above.
 OPSTAT StackMachine::jmpz(int addr) {
     if (data[top-1] == 0) {
-        push(programCounter);   //put current address on data stack
+        push(programCounter+1);   //put current address on data stack
         pushr();               //move address from data stack to return stack
         programCounter = addr; //set  to jump point
         return OP_BRANCH;      //signal next instruction is result of branching.
     }
-    tosr = data[top-1]; //Otherwise proceed as normal
     return pop();
 }
 
@@ -209,6 +194,14 @@ OPSTAT StackMachine::retf() {
     popr();
     programCounter = pop();
     return OP_BRANCH;
+}
+
+OPSTAT StackMachine::halt() {
+    return OP_HALT;
+}
+
+OPSTAT StackMachine::nop() {
+    return OP_SUCCESS;
 }
 
 /// @brief converts string to int and pushes onto data stack
@@ -235,14 +228,28 @@ int StackMachine::pop() {
 
 /// @brief pops data stack and pushes result to return stack
 /// @return 
-OPSTAT StackMachine::pushr() { 
+OPSTAT StackMachine::pushr() {
+    if (debugMode) {
+            cout<<"["<<programCounter<<"] pushr Stack: [";
+            for (int i = top-1; i >= 0; i--) cout<<data[i]<<" ";
+            cout<<"] raddr Stack: [";
+            for (int i = rtop-1; i >= 0; i--) cout<<rets[i]<<" ";
+            cout<<"]\n";
+    } 
     rets[rtop++] = pop(); 
     return OP_SUCCESS; 
 }
 
 /// @brief pops data of return stack and pushes result to data stack
 /// @return 
-OPSTAT StackMachine::popr() { 
+OPSTAT StackMachine::popr() {
+    if (debugMode) {
+            cout<<"["<<programCounter<<"] popr Stack: [";
+            for (int i = top-1; i >= 0; i--) cout<<data[i]<<" ";
+            cout<<"] raddr Stack: [";
+            for (int i = rtop-1; i >= 0; i--) cout<<rets[i]<<" ";
+            cout<<"]\n";
+    } 
     return push(rets[--rtop]); 
 }
 
@@ -299,7 +306,7 @@ OPSTAT StackMachine::mod() {
 
 //show top item on stack.
 OPSTAT StackMachine::show() {
-    cout<<"[TOP]"<<data[top-1]<<"\n";
+    cout<<"[-]"<<data[top-1]<<"\n";
     return OP_SUCCESS;
 }
 
@@ -321,6 +328,15 @@ int StackMachine::ALU(string op, string arg) {
         return dup();
     } else if (op == "over") {
         return over();
+    }
+
+    //equality
+    if (op == "cmpl") {
+        return cmpl();
+    } else if (op == "cmpg") {
+        return cmpg();
+    } else if (op == "cmpeq") {
+        return cmpeq();
     }
 
     //bitwise ops
@@ -360,6 +376,10 @@ int StackMachine::ALU(string op, string arg) {
         return jmpnz(atoi(arg.c_str()));
     } else if (op == "jmpz") {
         return jmpz(atoi(arg.c_str()));
+    } else if (op == "halt") {
+        return halt();
+    } else if (op == "nop") {
+        return nop();
     }
 
     return OP_ERROR;
@@ -374,23 +394,32 @@ void StackMachine::run(vector<string>& program) {
         vector<string> tokens = smtokenizer(instr, ' ');  //break the expression
         op = tokens[0];                                   //down into operation and argument
         arg = (tokens.size() > 1) ? tokens[1]:"";
-        //for debugging:
-        cout<<"["<<programCounter<<"] "<<op<<" "<<arg<<"\n";
+        if (debugMode) {
+            cout<<"["<<programCounter<<"] "<<op<<" "<<arg<<", Stack: [";
+            for (int i = top-1; i >= 0; i--) cout<<data[i]<<" ";
+            cout<<"]\n";
+        }
         //pass the instruction to the arithmetic and logic unit
         OPSTAT stat = ALU(op, arg);
         switch (stat) {
             case OP_SUCCESS:
                 programCounter += 1;
                 break;
+            case OP_HALT:
+                programCounter = program.size() + 1;
+                break;
             case OP_BRANCH:
-                cout<<"["<<stat<<"] [BRANCHING TO: "<<programCounter<<"]\n";
+                if (debugMode)
+                    cout<<"["<<stat<<"] [BRANCHING TO: "<<programCounter<<"]\n";
                 break;
             case OP_ERROR:
             default:
-                cout<<"["<<stat<<"] ";
-                cout<<"[LAST INSTRUCTION FAILED.]\n";
+                if (debugMode)
+                    cout<<"["<<stat<<"] [LAST INSTRUCTION FAILED.]\n";
                 programCounter += 1;
-        } 
+        }
+        char k;
+        if (stepping) cin>>k; 
     }
 }
 
