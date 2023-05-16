@@ -48,7 +48,7 @@ class StackMachine {
         OPSTAT retf(); //return from
         OPSTAT halt(); //end program.
         OPSTAT nop(); //no operation (you'd be surprised)
-        vector<string> smtokenizer(string expr, char DELIM);
+        vector<string> smtokenizer(vector<string>& expr, char DELIM);
         int programCounter;
         int memoryAddrReg;
         int randomAccessMemory[255];
@@ -181,7 +181,7 @@ OPSTAT StackMachine::jmpz(int addr) {
 
 /// @brief calls a subroutine at the address stored at top of data stack.
 /// @return 
-OPSTAT StackMachine::call() {
+OPSTAT StackMachine::call() {   
     push(programCounter);    //put programCounter on data stack.
     pushr();                //move programCounter from data stack to return stack;
     programCounter = pop(); //put new address from data stack into programCounter.
@@ -390,8 +390,8 @@ void StackMachine::run(vector<string>& program) {
     int opCnt = 0;
     programCounter = 0; 
     while (programCounter < program.size()) {
-        string instr = program[programCounter]; //Fetch the next instruction in the program.
-        vector<string> tokens = smtokenizer(instr, ' ');  //break the expression
+        //Fetch the next instruction in the program.
+        vector<string> tokens = smtokenizer(program, ' ');  //break the expression
         op = tokens[0];                                   //down into operation and argument
         arg = (tokens.size() > 1) ? tokens[1]:"";
         if (debugMode) {
@@ -423,7 +423,8 @@ void StackMachine::run(vector<string>& program) {
     }
 }
 
-vector<string> StackMachine::smtokenizer(string expr, char DELIM) {
+vector<string> StackMachine::smtokenizer(vector<string>& exprs, char DELIM) {
+    string expr = exprs[programCounter];
     vector<string> tokens;
     int pos = 0, i = 0, si = 0; //position, index, starting index.
     while (i < expr.size()) {
@@ -440,6 +441,35 @@ vector<string> StackMachine::smtokenizer(string expr, char DELIM) {
     }
     string subexpr = expr.substr(si, pos - si);
     tokens.push_back(subexpr);
+    if (tokens[0][0] == ':' && tokens[0][tokens[0].size() - 1] == ':') {
+        if (debugMode) {
+            cout<<"[Encountered Non Instruction: "<<tokens[0]<<"]\n";
+            vector<string> ret;
+            ret.push_back("nop");
+            return ret;
+        }
+    }
+    if (tokens.size() > 1 && tokens[1][0] == ':') {
+        string label = tokens[1].substr(1, tokens[1].size() - 2);
+        if (debugMode) {
+            cout<<"[Found Text Label] [Calculating numerical address of: " <<label;
+            cout<<"]\n";
+        }
+        for (int i = programCounter; i < exprs.size(); i++) {
+            if (exprs[i] == tokens[1]) {
+                tokens[1] = to_string(i + 1); //+1 because code starts after label. It is optional
+                if (debugMode)            //but without +1 it would perform an unneccesary "nop" instruction
+                    cout<<"[Address of "<<label<<" Found at: "<<tokens[1]<<"]\n";
+                return tokens;
+            }
+        }
+        if (debugMode) {
+            cout<<"[ERROR] [Could not find codeblock with name: "<<label<<"]\n";
+            tokens.clear();
+            tokens.push_back("halt");
+            return tokens;
+        }
+    }
     return tokens;
 }
 
