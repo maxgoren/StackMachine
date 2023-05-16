@@ -27,7 +27,8 @@ The stack machine is comprised of a few fundamental components.
     - popr -  pops the top item from the return address stack and pushes it onto the data stack.
     - show -  prints the value of the top itme on the data stack to console
     
- ### Memory Manipulation
+  ### Memory Manipulation
+  Facilitates interacting with random access memory
    - load <addr> - gets the data at provided memory address and places it ontop of the data stack.
    - store <addr> - takes the item on the top of the data stack and saves it in the location pointed to by the provided memory address.
 
