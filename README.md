@@ -29,8 +29,9 @@ The stack machine is comprised of a few fundamental components.
     
   ### Memory Manipulation
   Facilitates interacting with random access memory
-   - load <addr> - gets the data at provided memory address and places it ontop of the data stack.
-   - store <addr> - takes the item on the top of the data stack and saves it in the location pointed to by the provided memory address.
+  
+    - load <addr> - gets the data at provided memory address and places it ontop of the data stack.
+    - store <addr> - takes the item on the top of the data stack and saves it in the location pointed to by the provided memory address.
 
   ### Arithmetic
   All of these operations consume the top two values of the stack, resulting in those two values being replaced with the result of the operation.
@@ -51,9 +52,9 @@ The stack machine is comprised of a few fundamental components.
   ### Comparisons
   These operations compare the top two values of the stack, leaving them in place and pushing the result of the comparison on to the data stack.
   
-    - cmpeq - compares for equality, pushes 1 on to the data stack if the values are equal, and 0 if they are not equal.
-    - cmpl - less than comparison (<) pushes 1 on to the stack if the top value is less than the second value, other wise pushes 0 on to the data stack.
-    - cmpg - greater than comparison (>) pushes 1 on to the data stack if the top value is greater than the second value on the stack, other wise pushes a 0 to the data stack.
+        - cmpeq - compares for equality, pushes 1 on to the data stack if the values are equal, and 0 if they are not equal.
+        - cmpl - less than comparison (<) pushes 1 on to the stack if the top value is less than the second value, other wise pushes 0 on to the data stack.
+        - cmpg - greater than comparison (>) pushes 1 on to the data stack if the top value is greater than the second value on the stack, other wise pushes a 0 to the data stack.
     
  ### Branching and Control Flow
  These operations are what allow us to build up higher level constructs.
@@ -68,9 +69,9 @@ The stack machine is comprised of a few fundamental components.
  ### Instructions of Convenience
  Most of these instructions were borrowed from the Forth instruction set as described in [1]
  
-  - swap - switches the placement of the top two values on the stack.
-  - dup - pushes a copy of the top item on the data stack on to the data stack.
-  - over - pushes a copy of the second item on the data stack on to the top of the data stack.
+    - swap - switches the placement of the top two values on the stack.
+    - dup - pushes a copy of the top item on the data stack on to the data stack.
+    - over - pushes a copy of the second item on the data stack on to the top of the data stack.
   
   
  ## Sample stack machine assemvly language programs
