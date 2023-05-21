@@ -4,8 +4,9 @@
 #include <iostream>
 #include <vector>
 #include <fstream>
+#include <chrono>
 #include "smGrammarDefs.hpp"
-#include "smST.cpp"
+#include "smSymbolTable.hpp"
 using namespace std;
 
 
@@ -22,8 +23,14 @@ class smLexer {
         void error(string msg);
     public:
         smLexer(vector<string> src);
+        smLexer();
+        smLexer(const smLexer&);
         TokenList* lex();
 };
+
+smLexer::smLexer() {
+
+}
 
 smLexer::smLexer(vector<string> src) {
     source = src;
@@ -43,6 +50,14 @@ smLexer::smLexer(vector<string> src) {
     cout<<"Symbol table Initialized.\n";
 }
 
+smLexer::smLexer(const smLexer& o) {
+    source = o.source;
+    pos = o.pos;
+    buffer = o.buffer;
+    lookahead = o.lookahead;
+    lineno = o.lineno;
+    keywords = o.keywords;
+}
 void smLexer::error(string msg) {
     cout<<msg;
     exit(0);
@@ -97,7 +112,6 @@ Symbol smLexer::getToken() {
             error(msg);
         }
     } else if (isalpha(lookahead)) {
-        cout<<"Identifier or keyword?\n";
         buffer.clear();
         while (1) {
             if (isalnum(lookahead)) {
@@ -107,15 +121,11 @@ Symbol smLexer::getToken() {
                 break;
             }
             lookahead = nextchar();
-            cout<<buffer<<"\n";
         }
         Symbol ret = keywords.lookup(buffer);
-        cout<<"Chhecking symbol table...\n";
         if (ret == errsym) {
-            cout<<"Identiier.\n";
             return idsym;
         } else {
-            cout<<"Keyword: "<<tokennames[ret]<<"\n";
             return ret;
         }
     } else if (isdigit(lookahead)) {
@@ -146,7 +156,7 @@ Symbol smLexer::getToken() {
             pos = 0;
             cout<<"Analyzing line: "<<lineno<<"\n";
             if (lineno == source.size()) {
-                cout<<"Source file consumed.\n";
+                cout<<"Lexing Complete.\n";
                 return '~';
             }
             return nextchar();
@@ -155,6 +165,8 @@ Symbol smLexer::getToken() {
 
 //Lexer's Gonna Lex.
 TokenList* smLexer::lex() {
+    auto start = chrono::steady_clock::now();
+    cout<<"Lexer Starting...\n";
     TokenList dummy("dummy", whitespace, 0);
     TokenList* list = &dummy;
     lookahead = 'a';
@@ -166,6 +178,9 @@ TokenList* smLexer::lex() {
             list = list->next;
         }
     }
+    auto end = chrono::steady_clock::now();
+    auto timing = chrono::duration_cast<chrono::milliseconds>(end - start);
+    cout<<"Lexing Completed in: "<<timing.count()<<"ms.\n";
     return dummy.next;
 }
 

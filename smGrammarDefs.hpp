@@ -1,7 +1,9 @@
 #ifndef SM_GRAMMAR_DEFS_HPP
 #define SM_GRAMMAR_DEFS_HPP
+#include <iostream>
 #include <string>
 #include <vector>
+using std::cout;
 using std::vector;
 using std::string;
 
@@ -28,5 +30,6 @@ struct TokenList {
         next = nullptr;
     }
 };
+
 
 #endif

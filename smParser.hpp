@@ -2,165 +2,70 @@
 #define SM_PARSER_HPP
 #include <iostream>
 #include "smGrammarDefs.hpp"
+#include <chrono>
 using namespace std;
+
 
 class smParser {
     private:
-        void factor();
-        void term();
-        void expr();
-        void cond();
-        void statement();
-        void block();
-        void program();
-        bool match(Symbol t);
-        bool expect(Symbol t);
-        void error(string s);
-        TokenList* _tokens;
-        TokenList* _curr;
-        void nextsym();
         Symbol lookahead;
+        TokenList* src;
+        TokenList* _curr;
+        void program();
+        void block();
+        void statement();
+        void condition();
+        void expression();
+        void term();
+        void factor();
+        void nextsym();
+        bool expect(Symbol);
+        bool match(Symbol);
+        bool symbolTracing;
     public:
-        smParser(TokenList* tokens);
-        void parse();
+        smParser();
+        smParser(TokenList* _tokens, bool tracing);
+        void parse(bool tracing);
 };
 
-smParser::smParser(TokenList* tokens) {
-    _tokens = tokens;
+smParser::smParser() {
+    symbolTracing = false;
 }
 
+smParser::smParser(TokenList* _tokens, bool tracing) {
+    symbolTracing = tracing;
+    src = _tokens;
+}
 void smParser::nextsym() {
     if (_curr != nullptr && _curr->next != nullptr) {
+        if (symbolTracing)
+            cout<<"<["<<tokennames[lookahead]<<", "<<_curr->text<<"]>   -> ";
         _curr = _curr->next;
         lookahead = _curr->token;
+        if (symbolTracing)
+            cout<<"<["<<tokennames[lookahead]<<", "<<_curr->text<<"]>\n";
     }
 }
 
-void smParser::parse() {
-    _curr = _tokens;
-    lookahead = _curr->token;
-    program();
-}
-
-void smParser::error(string s) {
-    cout<<s<<"\n";
-    cout<<"Continue? ";
-    char yesno;
-    cin>>yesno;
-    if (yesno == 'y' || yesno == 'Y')
-        return;
-    else
-        exit(0);
-}
-
-bool smParser::match(Symbol s) {
-    if (lookahead == s) {
-        cout<<"Matched: "<<tokennames[s]<<"\n";
+bool smParser::match(Symbol t) {
+    if (lookahead == t) {
         nextsym();
-        cout<<"lookahed = "<<tokennames[_curr->token]<<"("<<_curr->text<<")\n";
         return true;
     }
     return false;
 }
 
-bool smParser::expect(Symbol s) {
-    if (match(s))
+bool smParser::expect(Symbol t) {
+    if (match(t))
         return true;
-    string msg = "Unexpected Symbol on line " + to_string(_curr->lineno) + ": " + tokennames[s] + "(" + _curr->text + ")";
-    error(msg);
+    cout<<"Unexpect Symbol: "<<tokennames[t]<<"\n";
     return false;
 }
 
-void smParser::factor() {
-    if (match(idsym)) {
-        ;
-    } else if (match(number)) {
-        ;
-    } else if (match(lparen)) {
-        expr();
-        expect(rparen);
-    } else {
-        string msg = "factor: syntax error on line: " + to_string(_curr->lineno) + " near: " + _curr->text;
-        error(msg);
-        nextsym();
-    }
-}
-
-void smParser::term() {
-    factor();
-    while (lookahead == multiply || lookahead == divide) {
-        nextsym();
-        factor();
-    }
-}
-
-void smParser::expr() {
-    if (lookahead == add || lookahead == sub)
-        nextsym();
-    term();
-    while (lookahead == add || lookahead == sub) {
-        nextsym();
-        term();
-    }
-}
-
-void smParser::cond() {
-    if (match(oddsym)) {
-        expr();
-    } else {
-        expr();
-        switch (lookahead) {
-            case equals:
-            case neqsym:
-            case ltsym:
-            case gtsym:
-            case ltesym:
-            case gtesym:
-                        nextsym();
-                        expr();
-                        break;
-            default:
-                string msg = "condition: syntax error on line: " + to_string(_curr->lineno) + " near: " + _curr->text;
-                error(msg);
-                nextsym();
-        }
-    }
-}
-
-void smParser::statement() {
-    if (match(idsym)) {
-        expect(assignsym);
-        expr(); 
-    } else if (match(callsym)) {
-        expect(idsym);
-    } else if (match(beginsym)) {
-        cout<<"Matched begin...\n";
-        do {
-            if (lookahead == endsym)
-                break;
-            statement();
-            cout<<"Matching semicolon...\n";
-        } while (match(semicolon));
-        puts("No more statements in block.. searching for end...");
-        expect(endsym);
-        if (lookahead == period) {
-            cout<<"Done Parseing.\n";
-            exit(0);
-        } else if (lookahead == semicolon) {
-           ;
-        }
-    } else if (match(ifsym)) {
-        cond();
-        expect(thensym);
-        statement();
-    } else if (match(whilesym)) {
-        cond();
-        expect(dosym);
-        statement();
-    } else {
-        string msg = "statement: syntax error on line: " + to_string(_curr->lineno) + " near: " + _curr->text;
-        error(msg);
-        nextsym();
+void smParser::program() {
+    block();
+    if (match(period)) {
+        cout<<"Perfect!\n";
     }
 }
 
@@ -168,15 +73,16 @@ void smParser::block() {
     if (match(constsym)) {
         do {
             expect(idsym);
-            expect(equals);
-            expect(idsym);
+            expect(assignsym);
+            expect(number);
         } while (match(comma));
         expect(semicolon);
     }
     if (match(varsym)) {
-        do {
+        expect(idsym);
+        while (match(comma)) {
             expect(idsym);
-        } while (match(comma));
+        }
         expect(semicolon);
     }
     while (match(procsym)) {
@@ -188,12 +94,100 @@ void smParser::block() {
     statement();
 }
 
-void smParser::program() {
-    int ident;
-    block();
-    expect(period);
-    cout<<"Done Parsing.\n";
+
+void smParser::statement() {
+    if (match(idsym)) {
+        expect(assignsym);
+        expression();
+    } else if (match(callsym)) {
+        expect(idsym);
+    } else if (match(beginsym)) {
+        do {
+            if (lookahead == endsym)
+                break;
+            statement();
+        } while (match(semicolon));
+        expect(endsym);
+    } else if (match(ifsym)) {
+        condition();
+        expect(thensym);
+        statement();
+    } else if (match(whilesym)) {
+        condition();
+        expect(dosym);
+        statement();
+    } else {
+        cout<<"statement: error on line: "<<_curr->lineno<<" near "<<_curr->text<<"\n";
+        nextsym();
+    }
 }
 
+
+void smParser::condition() {
+    if (match(oddsym)) expression();
+    else {
+        expression();
+        switch (lookahead) {
+            case equals:
+            case neqsym:
+            case ltsym:
+            case ltesym:
+            case gtsym:
+            case gtesym:
+                        nextsym();
+                        expression();
+                        break;
+            default:
+                cout<<"condition(): unexpected symbol: "<<_curr->text<<" on line: "<<_curr->lineno<<"\n";
+                nextsym();
+                break;
+        }
+    }
+}
+
+void smParser::expression() {
+   if (lookahead == add || lookahead == sub) {
+        nextsym();
+   }
+    term();
+    while (lookahead == add || lookahead == sub) {
+        nextsym();
+        term();
+   }
+}
+
+void smParser::term() {
+    factor();
+    while (lookahead == multiply || lookahead == divide) {
+        nextsym();
+        factor();
+    }
+}
+
+void smParser::factor() {
+    if (match(idsym)) {
+        []() {};
+    } else if (match(number)) {
+        []() {};
+    } else if (match(lparen)) {
+        expression();
+        expect(rparen);
+    } else {
+        cout<<"factor(): syntax error on line"<<_curr->lineno<<" near "<<_curr->text<<"\n";
+        nextsym();
+    }
+}
+
+void smParser::parse(bool tracing = true) {
+    auto start = chrono::steady_clock::now();
+    cout<<"Parser Staring...\n";
+    symbolTracing = tracing;
+    _curr = src;
+    lookahead = _curr->token;
+    program();
+    auto end = chrono::steady_clock::now();
+    auto timing = chrono::duration_cast<chrono::milliseconds>(end - start);
+    cout<<"Parsing Completed in: "<<timing.count()<<"ms.\n";
+}
 
 #endif

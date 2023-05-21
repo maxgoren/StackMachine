@@ -9,19 +9,23 @@ class SymbolTable {
         struct node {
             K key;
             V value;
-            bool ts;
             node* left;
             node* right;
             node(K k, V val) {
                 key = k; value = val;
                 left = right = nullptr;
-                ts = false;
             }
             ~node() {
                 if (left != nullptr)
                     delete left;
                 if (right != nullptr)
                     delete right;
+            }
+            node(const node& o) {
+                left = o.left;
+                right = o.right;
+                key = o.key;
+                value = o.value;
             }
         };
         typedef node* link;
@@ -34,7 +38,6 @@ class SymbolTable {
             }
             if (key == h->key) {
                 h->value = value;
-                h->ts = false;
                 return h;
             }
             if (key < h->key) h->left = put(h->left, key, value);
@@ -44,7 +47,7 @@ class SymbolTable {
         V get(link h, K key) {
             if (h == nullptr) {
                 return (V)21;
-            } else if (key == h->key && h->ts == false) {
+            } else if (key == h->key) {
                 return h->value;
             } else if (key < h->key) {
                 return get(h->left, key);
@@ -99,6 +102,10 @@ class SymbolTable {
         ~SymbolTable() {
             if (root != nullptr)
                 delete root;
+        }
+        SymbolTable(const SymbolTable& o) {
+            root = o.root;
+            n = o.n;
         }
         void insert(K key, V value) {
             root = put(root, key, value);
