@@ -375,7 +375,7 @@ OPSTAT StackMachine::mod() {
 
 //show top item on stack.
 OPSTAT StackMachine::show() {
-    cout<<"[-]"<<data[top-1]<<"\n";
+    cout<<"[TOS] "<<data[top-1]<<"\n";
     return OP_SUCCESS;
 }
 

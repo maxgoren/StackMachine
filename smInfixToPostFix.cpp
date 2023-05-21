@@ -1,17 +1,18 @@
 #include <iostream>
-#include <fstream>
-#include <ctype.h>
+#include <vector>
+#include "smStackMAchine.hpp"
 using namespace std;
 
 
 class smToyCompiler {
         void term();
+        void factor();
+        void expr();
         void match(char);
         void error();
-        void expr();
         char lookahead;
         string input;
-        ofstream output;
+        vector<string> output;
         int pos;
         char getchar() {
             return input[pos++];
@@ -20,13 +21,12 @@ class smToyCompiler {
         smToyCompiler() {
             pos = 0;
         }
-        void compile(string in) {
-            output.open("out.smc", ios::out);
+        vector<string> compile(string in) {
             input = in;
             lookahead = getchar();
             expr();
-            output<<"\n";
-            output.close();
+            output.push_back("show");
+            return output;
         }
 };
 
@@ -34,17 +34,36 @@ void smToyCompiler::expr() {
     term();
     while (1) {
         if (lookahead == '+') {
-            match('+'); term(); output<<"add\n";
+            match('+'); term(); output.push_back("add");
         } else if (lookahead == '-') {
-            match('-'); term(); output<<"sub\n";
+            match('-'); term(); output.push_back("sub");
         } else break;
     }
 }
 
 void smToyCompiler::term() {
+    factor();
+    while (1) {
+        if (lookahead == '*') {
+            match('*'); factor(); output.push_back("mult");
+        } else if (lookahead == '/') {
+            match('/'); factor(); output.push_back("div\n");
+        } else break;
+    }
+}
+
+void smToyCompiler::factor() {
     if (isdigit(lookahead)) {
-        output<<"push "<<lookahead<<"\n";
+        string cmd = "push ";
+        while (isdigit(lookahead)) {
+            cmd.push_back(lookahead);
+            lookahead = getchar();
+        }
+        pos--;
+        output.push_back(cmd);
         match(lookahead);
+    } else if (lookahead == '(') {
+        match('('); expr(); match(')');
     } else error();
 }
 
@@ -60,9 +79,12 @@ void smToyCompiler::error() {
 }
 
 int main() {
+    string expression = "(19*3)-17+(6*2)";
     smToyCompiler compiler;
     StackMachine sm(false, false);
-    compiler.compile("9-3*7");
+    vector<string> program = compiler.compile(expression);
+    cout<<"Evaluting: "<<expression<<"\nAnswer: ";
+    sm.run(program);
     return 0;
 }
 

@@ -5,9 +5,10 @@
 using std::vector;
 using std::string;
 
-vector<string> tokennames = { "lparen", "rparen", "add", "sub", "multiply", "divide", "semicolon", "comma", "period",
-                             "equals", "assignsym", "beginsym", "endsym", "procsym", "callsym",  "whilesym", "idsym", "ifsym", "dosym",
-                             "thensym", "number", "errsym", "whitespace", "varsym", "eofsym", "oddsym", "neqsym" "ltsym", "gtsym", "gtesym", "ltesym", "constsym"};
+vector<string> tokennames = { 
+    "lparen", "rparen", "add", "sub", "multiply", "divide", "semicolon", "comma", "period",
+    "equals", "assignsym", "beginsym", "endsym", "procsym", "callsym",  "whilesym", "idsym", "ifsym", "dosym",
+    "thensym", "number", "errsym", "whitespace", "varsym", "eofsym", "oddsym", "neqsym" "ltsym", "gtsym", "gtesym", "ltesym", "constsym"};
 
 typedef enum syms {
     lparen,rparen,add,sub,multiply,divide,semicolon,comma,period,equals,assignsym,beginsym,endsym,
