@@ -1,131 +1,148 @@
-#ifndef SMSYMBOLTABLE_HPP
-#define SMSYMBOLTABLE_HPP
+#ifndef SM_SYMBOL_TABLE_HPP
+#define SM_SYMBOL_TABLE_HPP
 #include <iostream>
+#include <limits>
 using namespace std;
 
 template <class K, class V>
-class SymbolTable {
+class smSymbolTable {
     private:
         struct node {
             K key;
             V value;
+            bool color;
             node* left;
             node* right;
-            node(K k, V val) {
-                key = k; value = val;
-                left = right = nullptr;
-            }
-            ~node() {
-                if (left != nullptr)
-                    delete left;
-                if (right != nullptr)
-                    delete right;
-            }
-            node(const node& o) {
-                left = o.left;
-                right = o.right;
-                key = o.key;
-                value = o.value;
+            node(K k, V v, bool c, node *l, node* r) {
+                key = k; value = v; color = c; left = l; right = r;
             }
         };
         typedef node* link;
-        link root;
-        int n;
-        link put(link h, K key, V value) {
-            if (h == nullptr) {
-                n++;
-                return new node(key, value);
-            }
-            if (key == h->key) {
-                h->value = value;
-                return h;
-            }
-            if (key < h->key) h->left = put(h->left, key, value);
-            else h->right = put(h->right, key, value);
-            return h;
+        link head, z;
+        link x, p, g, gg;
+        int N;
+        V nullValue;
+        bool color(link h) {
+            return (h == nullptr) ? false:h->color;
         }
-        V get(link h, K key) {
-            if (h == nullptr) {
-                return (V)21;
-            } else if (key == h->key) {
-                return h->value;
-            } else if (key < h->key) {
-                return get(h->left, key);
+        bool nil(link h) {
+            return h == z;
+        }
+        bool less(K a, K b) {
+            return a < b;
+        }
+        void split(K key) {
+            x->color = true; x->left->color = false; x->right->color = false;
+            if (color(p)) {
+                g->color = true;
+                if (less(key, p->key) != less(key, g->key)) 
+                    p = rotate(key, g);
+                x = rotate(key, gg);
+                x->color = false;
+            }
+        }
+        link rotate(K v, link y) {
+            link gc, c;
+            c = (less(v,y->key)) ? y->left:y->right;
+            if (less(v,c->key)) {
+                gc = c->left; c->left = gc->right; gc->right = c;
             } else {
-                return get(h->right, key);
+                gc = c->right; c->right = gc->left; gc->left = c;
             }
+            if (less(v,y->key)) y->left = gc; 
+            else y->right = gc;
+            return gc;
         }
-        link delMin(link h) {
-            if (h->left == nullptr) {
-                return h->right;
-            }
-            h->left = delMin(h->left);
-            return h;
-        }
-
         link min(link h) {
-            link x = h;
-            while (x->left != nullptr) x = x->left;
+            x = h;
+            while (!nil(x->left)) x = x->left;
             return x;
         }
-        link del(link h, K key) {
-            link p, t = h;
-            if (h == nullptr) 
-                return nullptr;
-            if (key < h->key) 
-                h->left = del(h->left, key);
-            else if (key > h->key) 
-                h->right = del(h->right, key);
-            else  {
-                if (h->right == nullptr) 
-                    return h->left;
-
-                t = h;
-                h = min(t->right);
-                h->right = delMin(t->right);
-                h->left = t->left;
-            }
+        link max(link h) {
+            x = h;
+            while (!nil(x->right)) x = x->right;
+            return x;
+        }
+        link deleteMin(link h) {
+            if (nil(h->left))
+                return h->right;
+            h->left = deleteMin(h->left);
             return h;
         }
-        void preorder(link h) {
-            if (h != nullptr) {
+        void visit(link h) {
+            if (!nil(h)) {
                 cout<<h->key<<" ";
-                preorder(h->left);
-                preorder(h->right);
+                visit(h->left);
+                visit(h->right);
             }
         }
     public:
-        SymbolTable() {
-            n = 0;
-            root = nullptr;
-        }
-        ~SymbolTable() {
-            if (root != nullptr)
-                delete root;
-        }
-        SymbolTable(const SymbolTable& o) {
-            root = o.root;
-            n = o.n;
+        smSymbolTable() {
+            z = new node(std::numeric_limits<K>::max(), 0, false, nullptr, nullptr);
+            z->left = z; z->right = z;
+            head = new node(std::numeric_limits<K>::min(), 0, false, z, z);
+            N = 0;
         }
         void insert(K key, V value) {
-            root = put(root, key, value);
-            n++;
+            x = head; p = x; g = p;
+            while (!nil(x)) {
+                gg = g; g = p; p = x;
+                x = less(key,x->key) ? x->left:x->right;
+                if (color(x->left) && color(x->right))
+                    split(key);
+            }
+            x = new node(key, value, true, z, z);
+            if (less(key, p->key)) p->left = x; 
+            else p->right = x;
+            split(key);
+            N++;
+            head->right->color = false;
         }
-        V lookup(K key) {
-            return get(root, key);
+        V& lookup(K key) {
+            x = head->right;
+            z->key = key;
+            z->value = nullValue;
+            while (x->key != key)
+                x = less(key, x->key) ? x->left:x->right;
+            return x->value;
         }
         void remove(K key) {
-            root = del(root, key);
-        }
-        int size() {
-            return n;
-        }
-        bool empty() {
-            return root == nullptr;
+            x = head->right; p = head;
+            while (!nil(x)) {
+                if (key == x->key)
+                    break;
+                p = x;
+                x = less(key, x->key) ? x->left:x->right;
+            }
+            link t = x;
+            if (nil(x->left) && nil(x->right)) {
+                x = z;
+            } else if (nil(x->left)) {
+                x = x->right;                
+            } else if (nil(x->right)) {
+                x = x->left;
+            } else {
+               x = min(t->right);
+               x->right = deleteMin(t->right);
+               x->left = t->left;
+            }
+            if (x->key < p->key) p->left = x; else p->right = x;
+            N--;
+            t->left = nullptr; t->right = nullptr;
+            delete t;
         }
         void walk() {
-            preorder(root);
+            visit(head->right);
             cout<<endl;
+        }
+        int size() const {
+            return N;
+        }
+        bool empty() const {
+            return head->right == z;
+        }
+        const V& null() const { 
+            return nullValue; 
         }
 };
 
