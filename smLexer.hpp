@@ -17,7 +17,7 @@ class smLexer {
         char lookahead;
         int lineno;
         string buffer;
-        SymbolTable<string, Symbol> keywords;
+        smSymbolTable<string, Symbol> keywords;
         Symbol getToken();
         char nextchar();
         void error(string msg);

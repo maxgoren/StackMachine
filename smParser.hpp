@@ -2,6 +2,7 @@
 #define SM_PARSER_HPP
 #include <iostream>
 #include "smGrammarDefs.hpp"
+#include "smSymbolTable.hpp"
 #include <chrono>
 using namespace std;
 

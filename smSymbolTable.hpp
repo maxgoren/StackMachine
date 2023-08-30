@@ -78,9 +78,9 @@ class smSymbolTable {
         }
     public:
         smSymbolTable() {
-            z = new node(std::numeric_limits<K>::max(), 0, false, nullptr, nullptr);
+            z = new node(std::numeric_limits<K>::max(), std::numeric_limits<V>::max(), false, nullptr, nullptr);
             z->left = z; z->right = z;
-            head = new node(std::numeric_limits<K>::min(), 0, false, z, z);
+            head = new node(std::numeric_limits<K>::min(), std::numeric_limits<V>::min(), false, z, z);
             N = 0;
         }
         void insert(K key, V value) {
@@ -101,7 +101,7 @@ class smSymbolTable {
         V& lookup(K key) {
             x = head->right;
             z->key = key;
-            z->value = nullValue;
+            z->value = (V)errsym;
             while (x->key != key)
                 x = less(key, x->key) ? x->left:x->right;
             return x->value;
